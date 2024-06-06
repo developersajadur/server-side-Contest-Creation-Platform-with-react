@@ -93,11 +93,10 @@ client.connect().then(() => {
     res.send(result);
   });
 
-  // Get all contests
   app.get("/contests", async (req, res) => {
-    const result = await ContestCollections.find().toArray()
+    const result = await ContestCollections.find({ status: "approved" }).toArray();
     res.send(result);
-  });
+});
 
   // Delete a contest
   app.delete("/contests/:id", async (req, res) => {
@@ -197,7 +196,41 @@ client.connect().then(() => {
     const result = await UserCollections.updateOne(filter, updatedDoc)
     res.send(result);
   });
-
+  // get accepted contest
+  // app.get("/acceptedContests", async (req, res) => {
+  //   const result = await ContestCollections.find({ status: "accepted" }).toArray()
+  //   res.send(result);
+  // });
+  // get rejected contest
+  app.get("/pending-rejected-contests", async (req, res) => {
+    const result = await ContestCollections.find({ status: { $in: ["pending", "rejected"] } }).toArray();
+    res.send(result);
+  })
+    // update accepted status
+    app.patch("/approve-contests/:id", async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const updatedDoc = {
+        $set: {
+          status: "approved"
+        }
+      };
+      const result = await ContestCollections.updateOne(filter, updatedDoc)
+      res.send(result);
+    })
+  // update rejected status
+  app.patch("/rejected-contests/:id", async (req, res) => {
+    const id = req.params.id;
+    const filter = { _id: new ObjectId(id) };
+    const updatedDoc = {
+      $set: {
+        status: "rejected"
+      }
+    };
+    const result = await ContestCollections.updateOne(filter, updatedDoc)
+    res.send(result);
+  })
+  // get accepted contest
   // Ping to confirm a successful connection
   client.db("admin").command({ ping: 1 })
     .then(() => {
