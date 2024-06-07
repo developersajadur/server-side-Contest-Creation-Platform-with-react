@@ -97,6 +97,12 @@ client.connect().then(() => {
     const result = await ContestCollections.find({ status: "approved" }).toArray();
     res.send(result);
 });
+app.get("/my-contests/:email", async (req, res) => {
+  const email = req.params.email; 
+  const query = { userEmail: email }; 
+  const result = await ContestCollections.find(query).toArray();
+  res.send(result);
+});
 
   // Delete a contest
   app.delete("/contests/:id", async (req, res) => {
