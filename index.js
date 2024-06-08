@@ -263,7 +263,43 @@ app.get("/submission/:userEmail/:contestId", async (req, res) => {
   const submission = await SubmissionCollections.findOne(query);
   res.send(submission);
 });
+// get submission contest by id
+app.get("/submission-contest/:contestId", async (req, res) => {
+  const {contestId} = req.params;
+  const query = { contestId };
+  const result = await SubmissionCollections.find(query).toArray();
+  res.send(result);
+}) 
 
+// -------------------------------------
+app.patch("/make-winner/:submissionId", async (req, res) => {
+  const { submissionId } = req.params;
+  
+  // Find the submission by ID
+  const submission = await SubmissionCollections.findOne({ _id: new ObjectId(submissionId) });
+  
+  if (!submission) {
+    return res.status(404).send({ message: "Submission not found" });
+  }
+
+  // Check if a winner has already been chosen for this contest
+  const existingWinner = await SubmissionCollections.findOne({ contestId: submission.contestId, isWinner: true });
+  if (existingWinner) {
+    return res.status(400).send({ message: "A winner has already been chosen for this contest" });
+  }
+
+  // Mark the submission as winner
+  const filter = { _id: new ObjectId(submissionId) };
+  const updateDoc = {
+    $set: {
+      isWinner: true,
+    }
+  };
+
+  const result = await SubmissionCollections.updateOne(filter, updateDoc);
+  res.send(result);
+});
+// -------------------------------------
 
   // Ping to confirm a successful connection
   client.db("admin").command({ ping: 1 })
