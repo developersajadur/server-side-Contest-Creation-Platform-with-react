@@ -31,6 +31,8 @@ client.connect().then(() => {
   const ContestCollections = client.db("ContestCreationDb").collection("contests");
   const UserCollections = client.db("ContestCreationDb").collection("users");
   const PaymentCollections = client.db("ContestCreationDb").collection("payments");
+  const SubmissionCollections = client.db("ContestCreationDb").collection("submissions");
+
 
   // JWT token generation endpoint
   app.post("/jwt", async (req, res) => {
@@ -84,6 +86,12 @@ client.connect().then(() => {
   const allPayment = await PaymentCollections.find().toArray();
   res.send(allPayment);
  })
+ // Get payment transactions by user email
+app.get("/payment/:email", async (req, res) => {
+  const email = req.params.email;
+  const payments = await PaymentCollections.find({ email }).toArray();
+  res.send(payments);
+});
 
 
   // Post a contest
@@ -236,7 +244,27 @@ app.get("/my-contests/:email", async (req, res) => {
     const result = await ContestCollections.updateOne(filter, updatedDoc)
     res.send(result);
   })
-  // get accepted contest
+
+  // post submitted contest 
+  app.post("/submission", async (req, res) => {
+    const newContest = req.body;
+    const result = await SubmissionCollections.insertOne(newContest)
+    res.send(result);
+  });
+  // get submitted contest
+  app.get("/submission", async (req, res) => {
+    const result = await SubmissionCollections.find().toArray()
+    res.send(result);
+  });
+  // Get submissions by user email and contest ID
+app.get("/submission/:userEmail/:contestId", async (req, res) => {
+  const { userEmail, contestId } = req.params;
+  const query = { userEmail, contestId };
+  const submission = await SubmissionCollections.findOne(query);
+  res.send(submission);
+});
+
+
   // Ping to confirm a successful connection
   client.db("admin").command({ ping: 1 })
     .then(() => {
