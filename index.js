@@ -45,7 +45,9 @@ client.connect().then(() => {
 
   // Token verification middleware
   const verifyToken = (req, res, next) => {
+    // console.log();
     const token = req.headers.authorization;
+    console.log(token);
     if (!token) {
       return res.status(401).send({ message: "Unauthorized Access denied" });
     }
@@ -57,6 +59,20 @@ client.connect().then(() => {
       next();
     });
   };
+  // verify admin
+  const verifyAdmin = async (req, res, next) => {
+    const email = req.decoded.email;  // Extract email from req.decoded
+    // console.log(email);
+    const query = { email: email };
+    const user = await UserCollections.findOne(query);
+
+    if ( user?.role === "admin") {
+        next();
+    } else {
+        return res.status(401).send({ message: "Unauthorized Access denied" });
+    }
+};
+
 
   // Stripe payment related API
   app.post("/create-payment-intent", async (req, res) => {
@@ -101,10 +117,13 @@ app.get("/payment/:email", async (req, res) => {
     res.send(result);
   });
 
-  app.get("/contests", async (req, res) => {
-    const result = await ContestCollections.find({ status: "approved" }).toArray();
-    res.send(result);
+  // Ensure verifyToken is used before verifyAdmin
+app.get("/contests", verifyToken, verifyAdmin, async (req, res) => {
+  console.log(res);
+  const result = await ContestCollections.find({ status: "approved" }).toArray();
+  res.send(result);
 });
+
 app.get("/my-contests/:email", async (req, res) => {
   const email = req.params.email; 
   const query = { userEmail: email }; 
@@ -252,7 +271,7 @@ app.get("/my-contests/:email", async (req, res) => {
     res.send(result);
   });
   // get submitted contest
-  app.get("/submission", async (req, res) => {
+  app.get("/submission", async(req, res) => {
     const result = await SubmissionCollections.find().toArray()
     res.send(result);
   });
@@ -264,12 +283,14 @@ app.get("/submission/:userEmail/:contestId", async (req, res) => {
   res.send(submission);
 });
 // get submission contest by id
-app.get("/submission-contest/:contestId", async (req, res) => {
-  const {contestId} = req.params;
-  const query = { contestId };
+app.get("/submission/:userEmail", async (req, res) => {
+  const { userEmail } = req.params;
+  const query = { userEmail };
   const result = await SubmissionCollections.find(query).toArray();
   res.send(result);
-}) 
+});
+
+
 
 // -------------------------------------
 app.patch("/make-winner/:submissionId", async (req, res) => {
