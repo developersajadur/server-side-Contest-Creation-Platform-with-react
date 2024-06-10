@@ -118,7 +118,7 @@ app.get("/payment/:email", async (req, res) => {
   });
 
   // Ensure verifyToken is used before verifyAdmin
-app.get("/contests", verifyToken, verifyAdmin, async (req, res) => {
+app.get("/contests", async (req, res) => {
   console.log(res);
   const result = await ContestCollections.find({ status: "approved" }).toArray();
   res.send(result);
@@ -321,6 +321,15 @@ app.patch("/make-winner/:submissionId", async (req, res) => {
   res.send(result);
 });
 // -------------------------------------
+  // Get user points by email
+  app.get("/user-points/:userEmail", async (req, res) => {
+    const userEmail = req.params.userEmail;
+    const winningSubmissions = await SubmissionCollections.find({ userEmail, isWinner: true }).toArray();
+    
+    const points = winningSubmissions.length * 10;
+    res.send({ points });
+  });
+// --------------------------------
 
   // Ping to confirm a successful connection
   client.db("admin").command({ ping: 1 })
