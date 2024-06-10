@@ -24,10 +24,8 @@ const client = new MongoClient(uri, {
 });
 
 // Connect to MongoDB
-client
-  .connect()
-  .then(() => {
-    console.log("Successfully connected to MongoDB!");
+client.connect().then(() => {console.log("Successfully connected to MongoDB!");
+
 
     // Database collections
     const ContestCollections = client
@@ -41,6 +39,23 @@ client
       .db("ContestCreationDb")
       .collection("submissions");
 
+   // Token verification middleware
+   const verifyToken = (req, res, next) => {
+    console.log('inside verify token', req.headers?.authorization);
+      if (!req.headers.authorization) {
+        return res.status(401).send({'message': 'Unauthorized Access'})
+      }
+      const token = req.headers.authorization.split(' ')[1];
+      // console.log(req);
+      // console.log(token);
+      jwt.verify(token,process.env.JWT_ACCESS_TOKEN,(err,decoded)=>{
+        if (err) {
+          return res.status(401).send({'message': 'Unauthorized Access'})
+        }
+        req.decoded = decoded
+        next()
+      })
+    };
     // JWT token generation endpoint
     app.post("/jwt", async (req, res) => {
       const user = req.body;
@@ -50,23 +65,6 @@ client
       res.send({ token });
     });
 
-    // Token verification middleware
-   const verifyToken = (req, res, next) => {
-    console.log(req.headers.authorization);
-      if (!req.headers.authorization) {
-        return res.status(401).send({'message': 'Unauthorized Access'})
-      }
-      const token = req.headers.authorization.split(' ')[1];
-      // console.log(req);
-      console.log(token);
-      jwt.verify(token,process.env.JWT_ACCESS_TOKEN,(err,decoded)=>{
-        if (err) {
-          return res.status(401).send({'message': 'Unauthorized Access'})
-        }
-        req.decoded = decoded
-        next()
-      })
-    };
     // verify admin
     const verifyAdmin = async (req, res, next) => {
       const email = req.decoded.email; // Extract email from req.decoded
@@ -105,7 +103,7 @@ client
       res.send(result);
     });
     //  get payment transaction
-    app.get("/payment", async (req, res) => {
+    app.get("/payment",async (req, res) => {
       const allPayment = await PaymentCollections.find().toArray();
       res.send(allPayment);
     });
@@ -124,7 +122,7 @@ client
     });
 
 // get contest
-app.get("/contests", async (req, res) => {
+app.get("/contests",verifyToken, async (req, res) => {
   const tags = req.query.tags ? req.query.tags.split(",").map(tag => new RegExp(tag, 'i')) : [];
   let query = {};
   if (tags.length > 0) {
@@ -134,7 +132,21 @@ app.get("/contests", async (req, res) => {
   res.send(result);
 });
 
-    
+    // get top ranking scores users
+    app.get("/top-ranking-users", async (req, res) => {
+      const result = await SubmissionCollections.aggregate([
+        {
+          $group: {
+            _id: "$userEmail",
+            totalScore: { $sum: "$score" },
+          },
+        },
+        {
+          $sort: { totalScore: -1 },
+        },
+      ]).toArray();
+      res.send(result);
+    });
 
 
     app.get("/my-contests/:email", async (req, res) => {
@@ -305,13 +317,14 @@ app.get("/contests", async (req, res) => {
       const result = await SubmissionCollections.find().toArray();
       res.send(result);
     });
-    // Get submissions by user email and contest ID
-    app.get("/submission/:userEmail/:contestId", async (req, res) => {
-      const { userEmail, contestId } = req.params;
-      const query = { userEmail, contestId };
-      const submission = await SubmissionCollections.findOne(query);
-      res.send(submission);
-    });
+   // Get submissions by user email and contest ID
+app.get("/submission-contest/:userEmail/:contestId", async (req, res) => {
+  const { userEmail, contestId } = req.params;
+  const query = { userEmail, contestId };
+  const submissions = await SubmissionCollections.find(query).toArray();
+  res.send(submissions);
+});
+
     // get submission contest by id
     app.get("/submission/:userEmail", async (req, res) => {
       const { userEmail } = req.params;
